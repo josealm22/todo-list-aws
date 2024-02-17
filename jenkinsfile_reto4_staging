@@ -26,7 +26,7 @@ pipeline {
             
             steps {
                 sh'''
-                usr/bin/python3 -m pytest -k --junitxml=result-rest.xml test/integration/todoApiTest.py
+                usr/bin/python3 -m usr/local/bin/pytest -k --junitxml=result-rest.xml test/integration/todoApiTest.py
                 '''
                 junit 'result-rest.xml'
                 cleanWs()
