@@ -1,0 +1,57 @@
+pipeline {
+    agent none
+
+     stages {
+        stage('Get Code') {
+            agent { label 'principal'}
+            steps {
+                git branch: 'develop',
+                url: 'git@github.com:josealm22/todo-list-aws.git',
+                credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
+                stash name: 'codigo-fuente', includes: '**/*'
+                stash name: 'cdpruebas', includes: 'test/'
+            }
+        }
+        
+        stage('Static Test') {
+            agent { label 'agente1'}
+            steps {
+                unstash 'codigo-fuente'
+                sh'''
+                    /home/ubuntu/.local/bin/flake8 --exit-zero --format=pylint src > flake8.out
+                    /home/ubuntu/.local/bin/bandit --exit-zero -r . -f custom -o bandit.out --severity-level medium --msg-template "{abspath}:{line}: [{test_id}] {msg}"
+
+                '''
+                recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')], 
+                qualityGates: [[threshold: 20, type: 'TOTAL', unstable: true], [threshold: 24, type: 'TOTAL', 
+                unstable: false]]
+                recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], 
+                qualityGates: [[threshold: 36, type: 'TOTAL', unstable: true], [threshold: 38, type: 'TOTAL', 
+                unstable: false]]
+            }
+        }
+        stage('Deploy') {
+            agent { label 'principal'}
+            steps {
+                sh'''
+                /usr/local/bin/sam build
+                /usr/local/bin/sam deploy --stack-name "todo-list-staging" --resolve-s3 --region "us-east-1" --no-fail-on-empty-changeset --force-upload --config-env "staging"
+                scripts/extract_urls.sh
+                '''
+                stash name : 'environment_urls', includes: 'api_urls.env'
+            }
+        }
+        stage('Rest test') {
+            agent {label  'agente2'}
+            steps {
+                unstash 'cdpruebas'
+                unstash 'environment_urls'
+                sh'''
+                /home/ubuntu/.local/bin/pytest --junitxml=result-rest.xml test/integration/todoApiTest.py
+                '''
+                junit 'result-rest.xml'
+            }
+        }
+    } 
+}
+
