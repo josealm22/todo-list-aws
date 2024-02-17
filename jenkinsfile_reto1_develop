@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Get Code') {
+            steps {
+                git branch: 'develop',
+                url: 'git@github.com:josealm22/todo-list-aws.git',
+                credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
+            }
+        }
+        stage('Static Test') {
+            steps {
+                sh'''
+                    /usr/local/bin/flake8 --exit-zero --format=pylint src > flake8.out
+                    /usr/local/bin/bandit --exit-zero -r . -f custom -o bandit.out --severity-level medium --msg-template "{abspath}:{line}: [{test_id}] {msg}"
+
+                '''
+                recordIssues tools: [flake8(name: 'Flake8', pattern: 'flake8.out')], 
+                qualityGates: [[threshold: 8, type: 'TOTAL', unstable: true], [threshold: 10, type: 'TOTAL', 
+                unstable: false]]
+                recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], 
+                qualityGates: [[threshold: 22, type: 'TOTAL', unstable: true], [threshold: 24, type: 'TOTAL', 
+                unstable: false]]
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh'''
+                /usr/local/bin/sam build
+                /usr/local/bin/sam deploy --stack-name "todo-list-staging" --resolve-s3 --region "us-east-1" --no-fail-on-empty-changeset --force-upload --config-env "staging"
+                scripts/extract_urls.sh
+                '''
+            }
+        }
+        stage('Rest test') {
+            steps {
+                sh'''
+                /usr/bin/python3 -m pytest --junitxml=result-rest.xml test/integration/todoApiTest.py
+                '''
+                junit 'result-rest.xml'
+            }
+        }
+        stage('Promote') {
+            steps {
+                sh'''
+                git config user.email "josealm2291@gmail.com"
+                git config user.name "josealm22"
+                git checkout master
+                git merge --no-ff develop
+                git push origin master
+                '''
+                cleanWs()
+            }
+        }
+        
+    }
+}
+
