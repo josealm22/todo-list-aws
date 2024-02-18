@@ -15,7 +15,7 @@ pipeline {
             steps {
                 sh'''
                 /usr/local/bin/sam build
-                /usr/local/bin/sam deploy --stack-name "todo-list-aws-production" --resolve-s3 --region "us-east-1" --no-fail-on-empty-changeset --force-upload --parameter-overrides Stage="production" --config-env "production" 
+                /usr/local/bin/sam deploy 
                 scripts/extract_urls.sh
                 '''
             }
