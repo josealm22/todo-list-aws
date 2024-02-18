@@ -14,7 +14,7 @@ pipeline {
             steps {
                 sh'''
                 /usr/local/bin/sam build
-                /usr/local/bin/sam deploy --config-env staging
+                /usr/local/bin/sam deploy --force-upload --config-env staging
                 scripts/extract_urls.sh
                 '''
                 
