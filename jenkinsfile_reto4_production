@@ -1,34 +1,38 @@
 pipeline {
     agent any
-
     stages {
-        stage('Get Code Production'){
-            
-            steps{        
-                    git branch: 'master',
-                    url: 'git@github.com:josealm22/todo-list-aws.git',
-                    credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
-                    sh'curl -o samconfig.toml https://raw.githubusercontent.com/josealm22/todo-list-aws-config/production/samconfig.toml'
+        stage('Get Code Production') {
+            steps {
+                git branch: 'master',
+                url: 'git@github.com:josealm22/todo-list-aws.git',
+                credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
+                sh 'curl -o samconfig.toml https://raw.githubusercontent.com/josealm22/todo-list-aws-config/production/samconfig.toml'
             }
         }
-	stage('Deploy') {
+        stage('Deploy') {
             steps {
-                sh'''
-                /usr/local/bin/sam build
-                /usr/local/bin/sam deploy --force-upload --config-env production 
-                scripts/extract_urls.sh
-                '''
+                script {
+                    // Ejecuta SAM Deploy y captura la salida
+                    def deployOutput = sh(script: '/usr/local/bin/sam build && /usr/local/bin/sam deploy --force-upload --config-env production', returnStdout: true).trim()
+                    // Imprime la salida para el registro
+                    println(deployOutput)
+                    // Verifica si la salida indica que no hay cambios para desplegar
+                    if (deployOutput.contains("Stack todo-list-aws-production is up to date")) {
+                        // Trata el caso de "No changes to deploy" como un éxito
+                        println("No changes detected in the SAM application. Moving on as this is not an error.")
+                    }
+                    // No es necesario un else, si hay un error, el comando sh fallará y detendrá el pipeline
+                }
+                // Ejecuta el script para extraer URLs después del despliegue
+                sh 'scripts/extract_urls.sh'
             }
         }
         stage('Rest test') {
             steps {
-                sh'''
-                /usr/bin/python3 -m pytest -k "test_read_" --junitxml=result-rest.xml test/integration/todoApiTest.py
-                '''
+                sh '/usr/bin/python3 -m pytest -k "test_read_" --junitxml=result-rest.xml test/integration/todoApiTest.py'
                 junit 'result-rest.xml'
                 cleanWs()
             }
-        }   
-
-     }    
+        } 
+    }    
 }
