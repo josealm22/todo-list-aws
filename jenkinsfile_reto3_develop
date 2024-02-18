@@ -33,6 +33,11 @@ pipeline {
                 recordIssues tools: [pyLint(name: 'Bandit', pattern: 'bandit.out')], 
                 qualityGates: [[threshold: 36, type: 'TOTAL', unstable: true], [threshold: 38, type: 'TOTAL', 
                 unstable: false]]
+		post {
+                	always {
+                    		cleanWs()
+                	}
+            	}
             }
         }
         stage('Deploy') {
@@ -59,8 +64,20 @@ pipeline {
 		hostname
 	        '''
                 junit 'result-rest.xml'
+		post {
+      		        always {
+                                cleanWs()
+                        }
+                }
             }
         }
-    } 
+    }
+	
+		post {
+                	always {
+                    		cleanWs()
+                	}
+            	}
+ 
 }
 
