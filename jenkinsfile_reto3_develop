@@ -10,8 +10,10 @@ pipeline {
                 credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
                 stash name: 'codigo-fuente', includes: '**/*'
                 stash name: 'cdpruebas', includes: 'test/'
+		sh'''
 		whoami
 		hostname
+		'''
             }
         }
         
