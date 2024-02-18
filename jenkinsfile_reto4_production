@@ -12,18 +12,18 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    // Ejecuta SAM Deploy y captura la salida
-                    def deployOutput = sh(script: '/usr/local/bin/sam build && /usr/local/bin/sam deploy --force-upload --config-env production', returnStdout: true).trim()
-                    // Imprime la salida para el registro
-                    println(deployOutput)
-                    // Verifica si la salida indica que no hay cambios para desplegar
-                    if (deployOutput.contains("Stack todo-list-aws-production is up to date")) {
-                        // Trata el caso de "No changes to deploy" como un éxito
-                        println("No changes detected in the SAM application. Moving on as this is not an error.")
+                    try {
+                        sh '/usr/local/bin/sam build && /usr/local/bin/sam deploy --force-upload --config-env production'
+                    } catch(Exception e) {
+                        // Verifica si el error fue "No changes to deploy"
+                        if (e.getMessage().contains("No changes to deploy")) {
+                            echo "No changes detected in the SAM application. Considering this as successful deployment."
+                        } else {
+                            // Si el error fue por otra razón, relanza la excepción
+                            throw e
+                        }
                     }
-                    // No es necesario un else, si hay un error, el comando sh fallará y detendrá el pipeline
                 }
-                // Ejecuta el script para extraer URLs después del despliegue
                 sh 'scripts/extract_urls.sh'
             }
         }
