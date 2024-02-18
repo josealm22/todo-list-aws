@@ -8,8 +8,6 @@ pipeline {
                     git branch: 'master',
                     url: 'git@github.com:josealm22/todo-list-aws.git',
                     credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
-                    
-                    sh'rm samconfig.toml'
                     sh'curl -o samconfig.toml https://raw.githubusercontent.com/josealm22/todo-list-aws-config/production/samconfig.toml'
             }
         }
