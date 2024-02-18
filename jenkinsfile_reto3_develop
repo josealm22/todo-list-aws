@@ -51,11 +51,7 @@ pipeline {
 		hostname
                 '''
                 stash name : 'environment_urls', includes: 'api_urls.env'
-                post {
-                      always {
-                              cleanWs()
-                      }
-                } 
+                 
             }
         }
         stage('Rest test') {
