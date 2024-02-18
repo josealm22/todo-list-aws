@@ -1,38 +1,34 @@
 pipeline {
     agent any
+
     stages {
-        stage('Get Code Production') {
-            steps {
-                git branch: 'master',
-                url: 'git@github.com:josealm22/todo-list-aws.git',
-                credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
-                sh 'curl -o samconfig.toml https://raw.githubusercontent.com/josealm22/todo-list-aws-config/production/samconfig.toml'
+        stage('Get Code Production'){
+            
+            steps{        
+                    git branch: 'master',
+                    url: 'git@github.com:josealm22/todo-list-aws.git',
+                    credentialsId: '6818f466-5e9e-49d4-86c1-c2dbc0f1d59f'
+                    sh'curl -o samconfig.toml https://raw.githubusercontent.com/josealm22/todo-list-aws-config/production/samconfig.toml'
             }
         }
-        stage('Deploy') {
+	stage('Deploy') {
             steps {
-                script {
-                    try {
-                        sh '/usr/local/bin/sam build && /usr/local/bin/sam deploy --force-upload --config-env production'
-                    } catch(Exception e) {
-                        // Verifica si el error fue "No changes to deploy"
-                        if (e.getMessage().contains("No changes to deploy")) {
-                            echo "No changes detected in the SAM application. Considering this as successful deployment."
-                        } else {
-                            // Si el error fue por otra razón, relanza la excepción
-                            throw e
-                        }
-                    }
-                }
-                sh 'scripts/extract_urls.sh'
+                sh'''
+                /usr/local/bin/sam build
+                /usr/local/bin/sam deploy --config-env production 
+                scripts/extract_urls.sh
+                '''
             }
         }
         stage('Rest test') {
             steps {
-                sh '/usr/bin/python3 -m pytest -k "test_read_" --junitxml=result-rest.xml test/integration/todoApiTest.py'
+                sh'''
+                /usr/bin/python3 -m pytest -k "test_read_" --junitxml=result-rest.xml test/integration/todoApiTest.py
+                '''
                 junit 'result-rest.xml'
                 cleanWs()
             }
-        } 
-    }    
+        }   
+
+     }    
 }
